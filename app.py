@@ -134,7 +134,7 @@ def transcribe_long_audio(audio_file, language, punctuation, progress=gr.Progres
 
 def create_demo():
     """Create the Gradio demo interface."""
-    with gr.Blocks(title="Cohere Transcribe", theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(title="Cohere Transcribe") as demo:
         gr.Markdown(
             """
             # 🎙️ Cohere Transcribe
@@ -167,9 +167,7 @@ def create_demo():
                         transcribe_btn = gr.Button("Transcribe", variant="primary")
 
                     with gr.Column():
-                        text_output = gr.Textbox(
-                            label="Transcription", lines=8, show_copy_button=True
-                        )
+                        text_output = gr.Textbox(label="Transcription", lines=8)
                         stats_output = gr.Textbox(
                             label="Statistics", lines=2, interactive=False
                         )
@@ -201,9 +199,7 @@ def create_demo():
                         )
 
                     with gr.Column():
-                        text_output_long = gr.Textbox(
-                            label="Transcription", lines=12, show_copy_button=True
-                        )
+                        text_output_long = gr.Textbox(label="Transcription", lines=12)
                         stats_output_long = gr.Textbox(
                             label="Statistics", lines=2, interactive=False
                         )
@@ -227,4 +223,4 @@ def create_demo():
 
 if __name__ == "__main__":
     demo = create_demo()
-    demo.launch(server_name="127.0.0.1", server_port=7860)
+    demo.launch(server_name="127.0.0.1", server_port=7860, theme=gr.themes.Soft())
