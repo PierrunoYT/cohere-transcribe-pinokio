@@ -13,13 +13,6 @@ module.exports = {
         message: "git lfs install"
       }
     },
-    // Install uv if not available
-    {
-      method: "shell.run",
-      params: {
-        message: "pip install uv"
-      }
-    },
     // Install dependencies
     {
       method: "shell.run",
