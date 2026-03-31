@@ -13,6 +13,13 @@ module.exports = {
         message: "git lfs install"
       }
     },
+    // Install uv if not available
+    {
+      method: "shell.run",
+      params: {
+        message: "pip install uv"
+      }
+    },
     // Install dependencies
     {
       method: "shell.run",
@@ -30,7 +37,7 @@ module.exports = {
         uri: "torch.js",
         params: {
           venv: "env",
-          path: "app"
+          path: "."
         }
       }
     },
