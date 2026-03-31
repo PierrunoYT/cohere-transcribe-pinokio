@@ -34,13 +34,6 @@ module.exports = {
         }
       }
     },
-    // Create link for UI
-    {
-      method: "script.start",
-      params: {
-        uri: "link.js"
-      }
-    },
     {
       method: "notify",
       params: {
