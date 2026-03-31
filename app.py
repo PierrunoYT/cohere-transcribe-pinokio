@@ -32,29 +32,47 @@ SUPPORTED_LANGUAGES = {
 _model_cache = {}
 
 
-def get_model(device="auto"):
+def get_model(device="auto", hf_token=None):
     """Load model with caching to avoid reloading on every request."""
-    if "model" not in _model_cache:
+    cache_key = hf_token or "no_token"
+    if cache_key not in _model_cache:
         print("Loading Cohere Transcribe model...")
-        processor = AutoProcessor.from_pretrained(MODEL_ID)
+        auth_kwargs = {"token": hf_token} if hf_token else {}
+        processor = AutoProcessor.from_pretrained(MODEL_ID, **auth_kwargs)
         model = CohereAsrForConditionalGeneration.from_pretrained(
             MODEL_ID,
             device_map=device,
             torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+            **auth_kwargs,
         )
-        _model_cache["processor"] = processor
-        _model_cache["model"] = model
+        _model_cache[cache_key] = {"processor": processor, "model": model}
         print("Model loaded successfully!")
-    return _model_cache["processor"], _model_cache["model"]
+    return _model_cache[cache_key]["processor"], _model_cache[cache_key]["model"]
 
 
-def transcribe_audio(audio_file, language, punctuation, progress=gr.Progress()):
+def download_model(hf_token, progress=gr.Progress()):
+    """Pre-download and cache the model so first transcription is faster."""
+    progress(0, desc="Validating token...")
+    token = (hf_token or "").strip() or None
+    try:
+        progress(0.2, desc="Downloading model files...")
+        get_model(hf_token=token)
+        progress(1.0, desc="Done")
+        return "Model is downloaded and ready."
+    except Exception as e:
+        return f"Model download failed: {str(e)}"
+
+
+def transcribe_audio(
+    audio_file, language, punctuation, hf_token, progress=gr.Progress()
+):
     """Transcribe an audio file."""
     if audio_file is None:
         return "Please upload an audio file.", ""
 
     progress(0, desc="Loading model...")
-    processor, model = get_model()
+    token = (hf_token or "").strip() or None
+    processor, model = get_model(hf_token=token)
 
     progress(0.3, desc="Loading audio...")
     try:
@@ -86,13 +104,16 @@ def transcribe_audio(audio_file, language, punctuation, progress=gr.Progress()):
     return text, stats
 
 
-def transcribe_long_audio(audio_file, language, punctuation, progress=gr.Progress()):
+def transcribe_long_audio(
+    audio_file, language, punctuation, hf_token, progress=gr.Progress()
+):
     """Transcribe long-form audio with automatic chunking."""
     if audio_file is None:
         return "Please upload an audio file.", ""
 
     progress(0, desc="Loading model...")
-    processor, model = get_model()
+    token = (hf_token or "").strip() or None
+    processor, model = get_model(hf_token=token)
 
     progress(0.2, desc="Loading audio...")
     try:
@@ -143,6 +164,23 @@ def create_demo():
             """
         )
 
+        with gr.Row():
+            hf_token = gr.Textbox(
+                label="Hugging Face Token (for gated model access)",
+                type="password",
+                placeholder="hf_...",
+            )
+            download_btn = gr.Button("Download Model", variant="secondary")
+        download_status = gr.Textbox(
+            label="Model Download Status", lines=2, interactive=False
+        )
+
+        download_btn.click(
+            fn=download_model,
+            inputs=[hf_token],
+            outputs=[download_status],
+        )
+
         with gr.Tabs():
             with gr.Tab("Short-form"):
                 gr.Markdown(
@@ -174,7 +212,7 @@ def create_demo():
 
                 transcribe_btn.click(
                     fn=transcribe_audio,
-                    inputs=[audio_input, language, punctuation],
+                    inputs=[audio_input, language, punctuation, hf_token],
                     outputs=[text_output, stats_output],
                 )
 
@@ -206,7 +244,12 @@ def create_demo():
 
                 transcribe_btn_long.click(
                     fn=transcribe_long_audio,
-                    inputs=[audio_input_long, language_long, punctuation_long],
+                    inputs=[
+                        audio_input_long,
+                        language_long,
+                        punctuation_long,
+                        hf_token,
+                    ],
                     outputs=[text_output_long, stats_output_long],
                 )
 
