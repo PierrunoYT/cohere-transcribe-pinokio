@@ -95,10 +95,10 @@ def transcribe_audio(
     progress(0.7, desc="Generating transcription...")
     start_time = time.time()
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=512)
+        outputs = model.generate(**inputs, max_new_tokens=256)
     elapsed = time.time() - start_time
 
-    text = processor.decode(outputs[0], skip_special_tokens=True)
+    text = processor.decode(outputs, skip_special_tokens=True)
 
     stats = f"Transcribed in {elapsed:.2f}s"
     return text, stats
@@ -138,15 +138,15 @@ def transcribe_long_audio(
     progress(0.6, desc="Generating transcription...")
     start_time = time.time()
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=512)
+        outputs = model.generate(**inputs, max_new_tokens=256)
     elapsed = time.time() - start_time
 
     text = processor.decode(
-        outputs[0],
+        outputs,
         skip_special_tokens=True,
         audio_chunk_index=audio_chunk_index,
         language=lang_code,
-    )
+    )[0]
 
     rtfx = duration_s / elapsed if elapsed > 0 else 0
     stats = f"Audio duration: {duration_s / 60:.1f} min | Transcribed in {elapsed:.1f}s | RTFx: {rtfx:.1f}x"
@@ -266,4 +266,8 @@ def create_demo():
 
 if __name__ == "__main__":
     demo = create_demo()
-    demo.launch(server_name="127.0.0.1", server_port=7860, theme=gr.themes.Soft())
+    demo.launch(
+        server_name="127.0.0.1",
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
+        theme=gr.themes.Soft(),
+    )
