@@ -1,6 +1,6 @@
 # Cohere Transcribe
 
-A Gradio-based web interface for [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026), a state-of-the-art open-source speech recognition model supporting 14 languages.
+A Gradio-based web interface for [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026), a state-of-the-art open-source 2B parameter conformer-based encoder-decoder speech recognition model supporting 14 languages.
 
 ## Features
 
