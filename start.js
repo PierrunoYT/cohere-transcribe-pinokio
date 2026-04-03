@@ -18,7 +18,7 @@ module.exports = {
           HF_HUB_DOWNLOAD_TIMEOUT: "300",
           PYTHONUTF8: "1"
         },
-        path: ".",
+        path: "app",
         message: [
           "python app.py"
         ],

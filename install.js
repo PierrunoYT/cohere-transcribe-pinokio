@@ -10,6 +10,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
+        path: ".",
         message: "git lfs install"
       }
     },
@@ -18,9 +19,10 @@ module.exports = {
       method: "shell.run",
       params: {
         venv: "env",
+        path: "app",
         message: [
           "uv pip install -r requirements.txt"
-        ],
+        ]
       }
     },
     // Install PyTorch with GPU support
@@ -30,7 +32,7 @@ module.exports = {
         uri: "torch.js",
         params: {
           venv: "env",
-          path: "."
+          path: "app"
         }
       }
     },

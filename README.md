@@ -10,13 +10,27 @@ A Gradio-based web interface for [Cohere Transcribe](https://huggingface.co/Cohe
 - **Punctuation Control**: Toggle punctuation on/off
 - **Model Caching**: Model loads once and stays in memory for fast subsequent transcriptions
 
+## Project layout
+
+Pinokio launcher scripts live in the repository root; application code lives under `app/`:
+
+```
+project-root/
+├── app/
+│   ├── app.py              # Gradio entry point
+│   └── requirements.txt    # Python dependencies (PyTorch via torch.js)
+├── install.js / start.js   # Pinokio launcher scripts
+├── pinokio.js / pinokio.json
+└── README.md
+```
+
 ## Quick Start with Pinokio
 
 This application is packaged for [Pinokio](https://pinokio.com/) for one-click installation and management.
 
 **Available Commands:**
 - **Install** - Sets up Python environment, installs dependencies, and configures PyTorch for your GPU
-- **Start** - Launches the Gradio UI at `http://localhost:7860`
+- **Start** - Launches the Gradio UI on `127.0.0.1` using the next free port; Pinokio shows **Open Web UI** with the exact URL
 - **Update** - Pulls latest changes from repository
 - **Reset** - Removes environment for clean reinstall
 
@@ -34,6 +48,51 @@ This application is packaged for [Pinokio](https://pinokio.com/) for one-click i
 - CUDA 12.x compatible drivers
 
 **Note:** CPU-only mode is supported but significantly slower.
+
+## Programmatic access
+
+### Pinokio (JavaScript)
+
+Launcher scripts are Node modules that export `module.exports` with Pinokio steps (`shell.run`, `local.set`, `script.start`, and others). See `install.js`, `start.js`, `update.js`, `reset.js`, and `pinokio.js` in this repository. For the full script API, see the **Programming Pinokio** section in Pinokio’s `PINOKIO.md` (bundled with the Pinokio app).
+
+### Python (Transformers)
+
+Use the same model ID as the Gradio app. For preprocessing, decoding, and long-form chunking, mirror the logic in `app/app.py`.
+
+```python
+from transformers import AutoProcessor, CohereAsrForConditionalGeneration
+import torch
+
+MODEL_ID = "CohereLabs/cohere-transcribe-03-2026"
+processor = AutoProcessor.from_pretrained(MODEL_ID)
+model = CohereAsrForConditionalGeneration.from_pretrained(
+    MODEL_ID,
+    device_map="auto",
+    torch_dtype=torch.float16,
+)
+# Load 16 kHz mono audio, build inputs with processor(...), then model.generate(...).
+```
+
+### Python (Gradio Client)
+
+When the server is running, you can call the live app with [`gradio_client`](https://www.gradio.app/docs/python-client/client):
+
+```python
+from gradio_client import Client
+
+client = Client("http://127.0.0.1:<PORT>")  # use the URL from Pinokio after Start
+# client.view_api()  # list endpoints for your Gradio version
+```
+
+### curl
+
+Gradio serves a local HTTP API. After **Start**, use the base URL from Pinokio (not a fixed port). Discover routes for your Gradio version, for example:
+
+```bash
+curl -s "http://127.0.0.1:<PORT>/gradio_api/info"
+```
+
+Replace `<PORT>` with the port from your **Open Web UI** link. If the path differs, check the Gradio version’s API docs or your browser’s network tab while using the UI.
 
 ## Usage Guide
 
