@@ -4,7 +4,8 @@ module.exports = {
   description: "State-of-the-art open-source speech recognition model supporting 14 languages. 2B parameter ASR model from Cohere Labs.",
   icon: "icon.jpg",
   menu: async (kernel, info) => {
-    let installed = info.exists("env")
+    // venv lives under app/ when install uses path: "app" (see install.js)
+    let installed = info.exists("app/env") || info.exists("env")
     let running = {
       install: info.running("install.js"),
       start: info.running("start.js"),
