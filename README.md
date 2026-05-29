@@ -24,6 +24,14 @@ project-root/
 └── README.md
 ```
 
+## Gated model access
+
+The model weights are **gated** on Hugging Face. Before transcribing, you must:
+
+1. Visit [CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) and accept the license terms.
+2. Create a [Hugging Face access token](https://huggingface.co/settings/tokens).
+3. Paste the token into the **Hugging Face Token** field in the app before downloading the model or transcribing.
+
 ## Quick Start with Pinokio
 
 This application is packaged for [Pinokio](https://pinokio.com/) for one-click installation and management.
@@ -169,6 +177,7 @@ Replace `<PORT>` with the port from your **Open Web UI** link. If the path diffe
 ## Resources
 
 - **Model**: [CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)
+- **Live Demo**: [Hugging Face Space](https://huggingface.co/spaces/CohereLabs/cohere-transcribe-03-2026)
 - **Technical Blog**: [Hugging Face Blog](https://huggingface.co/blog/CohereLabs/cohere-transcribe-03-2026-release)
 - **Announcement**: [Cohere Blog](https://cohere.com/blog/transcribe)
 - **Leaderboard**: [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
