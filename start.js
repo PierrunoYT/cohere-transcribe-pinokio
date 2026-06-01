@@ -12,7 +12,6 @@ module.exports = {
       params: {
         venv: "env",
         env: {
-          GRADIO_SERVER_NAME: "127.0.0.1",
           GRADIO_SERVER_PORT: "{{port}}",
           HF_HUB_ENABLE_HF_TRANSFER: "1",
           HF_HUB_DOWNLOAD_TIMEOUT: "300",
