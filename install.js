@@ -9,14 +9,6 @@ module.exports = {
         html: "Installing Cohere Transcribe..."
       }
     },
-    // Install Git LFS for large model files
-    {
-      method: "shell.run",
-      params: {
-        path: ".",
-        message: "git lfs install"
-      }
-    },
     // Install dependencies
     {
       method: "shell.run",
