@@ -9,26 +9,8 @@ module.exports = {
         html: "Installing Cohere Transcribe..."
       }
     },
-    // Install Git LFS for large model files
-    {
-      method: "shell.run",
-      params: {
-        path: ".",
-        message: "git lfs install"
-      }
-    },
-    // Install dependencies
-    {
-      method: "shell.run",
-      params: {
-        venv: "env",
-        path: "app",
-        message: [
-          "uv pip install -r requirements.txt"
-        ]
-      }
-    },
-    // Install PyTorch with GPU support
+    // Install PyTorch with GPU support first, so the correct build is
+    // present before any other dependency can pull in a generic default
     {
       method: "script.start",
       params: {
@@ -37,6 +19,17 @@ module.exports = {
           venv: "env",
           path: "app"
         }
+      }
+    },
+    // Install remaining dependencies
+    {
+      method: "shell.run",
+      params: {
+        venv: "env",
+        path: "app",
+        message: [
+          "uv pip install -r requirements.txt"
+        ]
       }
     },
     {

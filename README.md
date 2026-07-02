@@ -39,7 +39,7 @@ This application is packaged for [Pinokio](https://pinokio.com/) for one-click i
 **Available Commands:**
 - **Install** - Sets up Python environment, installs dependencies, and configures PyTorch for your GPU
 - **Start** - Launches the Gradio UI on `127.0.0.1` using the next free port; Pinokio shows **Open Web UI** with the exact URL
-- **Update** - Pulls latest changes from repository
+- **Update** - Pulls latest changes from repository and resyncs Python dependencies
 - **Reset** - Removes environment for clean reinstall
 
 ## System Requirements
