@@ -1,8 +1,8 @@
 module.exports = {
   version: "5.0",
   menu: async (kernel, info) => {
-    // venv lives under app/ when install uses path: "app" (see install.js)
-    let installed = info.exists("app/env") || info.exists("env")
+    // A venv can exist even when dependency installation failed.
+    let installed = info.exists("app/env/.installed")
     let running = {
       install: info.running("install.js"),
       start: info.running("start.js"),
@@ -10,7 +10,15 @@ module.exports = {
       reset: info.running("reset.js"),
       link: info.running("link.js")
     }
-    if (running.install) {
+    if (running.update || running.reset || running.link) {
+      const action = running.update ? "update" : running.reset ? "reset" : "link"
+      return [{
+        default: true,
+        icon: "fa-solid fa-terminal",
+        text: { update: "Updating", reset: "Resetting", link: "Deduplicating" }[action],
+        href: `${action}.js`,
+      }]
+    } else if (running.install) {
       return [{
         default: true,
         icon: "fa-solid fa-plug",
@@ -39,27 +47,6 @@ module.exports = {
             href: "start.js",
           }]
         }
-      } else if (running.update) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Updating",
-          href: "update.js",
-        }]
-      } else if (running.reset) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Resetting",
-          href: "reset.js",
-        }]
-      } else if (running.link) {
-        return [{
-          default: true,
-          icon: 'fa-solid fa-terminal',
-          text: "Deduplicating",
-          href: "link.js",
-        }]
       } else {
         return [{
           default: true,

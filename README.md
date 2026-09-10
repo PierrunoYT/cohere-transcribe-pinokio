@@ -39,7 +39,7 @@ This application is packaged for [Pinokio](https://pinokio.com/) for one-click i
 **Available Commands:**
 - **Install** - Sets up Python environment, installs dependencies, and configures PyTorch for your GPU
 - **Start** - Launches the Gradio UI on `127.0.0.1` using the next free port; Pinokio shows **Open Web UI** with the exact URL
-- **Update** - Pulls latest changes from repository and resyncs Python dependencies
+- **Update** - Pulls latest changes (fast-forward only), refreshes dependencies, and checks the app
 - **Reset** - Removes environment for clean reinstall
 
 ## System Requirements
@@ -56,6 +56,15 @@ This application is packaged for [Pinokio](https://pinokio.com/) for one-click i
 - CUDA 12.x compatible drivers
 
 **Note:** CPU-only mode is supported but significantly slower.
+
+NVIDIA (Windows/Linux) and supported AMD ROCm (Linux) devices use GPU inference.
+AMD Windows and Apple Silicon use CPU inference by default. Intel macOS is not
+supported by the required PyTorch/Transformers combination. Set `COHERE_DEVICE=cpu`
+in the launch environment to force CPU inference.
+
+Installation is marked complete only after dependency checks and UI construction
+succeed. Existing installations without this marker should run **Install** once.
+The model downloads when you click **Download Model** or transcribe for the first time.
 
 ## Programmatic access
 
@@ -76,7 +85,7 @@ processor = AutoProcessor.from_pretrained(MODEL_ID)
 model = CohereAsrForConditionalGeneration.from_pretrained(
     MODEL_ID,
     device_map="auto",
-    torch_dtype=torch.float16,
+    dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
 )
 # Load 16 kHz mono audio, build inputs with processor(...), then model.generate(...).
 ```
@@ -147,6 +156,11 @@ Replace `<PORT>` with the port from your **Open Web UI** link. If the path diffe
 | CPU (float32) | ~16GB RAM |
 
 ## Troubleshooting
+
+**Validation without model weights**
+- Run `python -m unittest discover -s app -p "test_*.py"` for offline regression tests.
+- Run `node --test tests/launchers.test.js` for launcher state and platform checks.
+- In the installed `app` environment, run `uv pip check` and `python -c "from app import create_demo; create_demo()"`.
 
 **Out of Memory Errors**
 - Close other GPU applications

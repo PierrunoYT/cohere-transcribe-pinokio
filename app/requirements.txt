@@ -1,15 +1,14 @@
-# Cohere Transcribe - torch/torchaudio installed by torch.js
+# Cohere Transcribe - torch installed by torch.js
 
 # Transformers & Model Loading
-transformers>=5.4.0
+transformers>=5.4.0,<6.0.0
 accelerate>=1.0.0
 safetensors>=0.6.0
 sentencepiece
 protobuf
 
 # Web Interface
-gradio>=5.0.0,<7.0.0
-gradio-client>=2.0.0
+gradio>=6.0.0,<7.0.0
 
 # Audio Processing
 librosa>=0.10.0
@@ -19,6 +18,5 @@ scipy>=1.10.0
 # Utilities
 numpy>=1.26.0
 sympy>=1.13.0
-hf-transfer>=0.1.4
 tqdm>=4.65.0
 huggingface_hub>=0.25.0
