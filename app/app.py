@@ -1,9 +1,8 @@
 import gradio as gr
 import torch
-import tempfile
 import os
 import time
-from pathlib import Path
+from threading import Lock
 
 from transformers import AutoProcessor, CohereAsrForConditionalGeneration
 from transformers.audio_utils import load_audio
@@ -30,24 +29,32 @@ SUPPORTED_LANGUAGES = {
 
 # Global model cache
 _model_cache = {}
+_model_lock = Lock()
 
 
 def get_model(device="auto", hf_token=None):
     """Load model with caching to avoid reloading on every request."""
-    cache_key = hf_token or "no_token"
-    if cache_key not in _model_cache:
+    if device == "auto":
+        device = os.environ.get("COHERE_DEVICE") or (
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+    # Credentials authorize downloads; they must not create duplicate model copies.
+    with _model_lock:
+        if device in _model_cache:
+            return _model_cache[device]
         print("Loading Cohere Transcribe model...")
         auth_kwargs = {"token": hf_token} if hf_token else {}
         processor = AutoProcessor.from_pretrained(MODEL_ID, **auth_kwargs)
         model = CohereAsrForConditionalGeneration.from_pretrained(
             MODEL_ID,
             device_map=device,
-            torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+            dtype=torch.float32 if device == "cpu" else torch.float16,
             **auth_kwargs,
         )
-        _model_cache[cache_key] = {"processor": processor, "model": model}
+        model.eval()
+        _model_cache[device] = (processor, model)
         print("Model loaded successfully!")
-    return _model_cache[cache_key]["processor"], _model_cache[cache_key]["model"]
+        return processor, model
 
 
 def download_model(hf_token, progress=gr.Progress()):
@@ -66,42 +73,8 @@ def download_model(hf_token, progress=gr.Progress()):
 def transcribe_audio(
     audio_file, language, punctuation, hf_token, progress=gr.Progress()
 ):
-    """Transcribe an audio file."""
-    if audio_file is None:
-        return "Please upload an audio file.", ""
-
-    progress(0, desc="Loading model...")
-    token = (hf_token or "").strip() or None
-    processor, model = get_model(hf_token=token)
-
-    progress(0.3, desc="Loading audio...")
-    try:
-        audio = load_audio(audio_file, sampling_rate=16000)
-    except Exception as e:
-        return f"Error loading audio: {str(e)}", ""
-
-    lang_code = SUPPORTED_LANGUAGES.get(language, "en")
-
-    progress(0.5, desc="Processing audio...")
-    inputs = processor(
-        audio,
-        sampling_rate=16000,
-        return_tensors="pt",
-        language=lang_code,
-        punctuation=punctuation,
-    )
-    inputs.to(model.device, dtype=model.dtype)
-
-    progress(0.7, desc="Generating transcription...")
-    start_time = time.time()
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=256)
-    elapsed = time.time() - start_time
-
-    text = processor.decode(outputs, skip_special_tokens=True)
-
-    stats = f"Transcribed in {elapsed:.2f}s"
-    return text, stats
+    """Use the same chunk-aware decoding for recordings of any length."""
+    return transcribe_long_audio(audio_file, language, punctuation, hf_token, progress)
 
 
 def transcribe_long_audio(
@@ -111,15 +84,22 @@ def transcribe_long_audio(
     if audio_file is None:
         return "Please upload an audio file.", ""
 
-    progress(0, desc="Loading model...")
-    token = (hf_token or "").strip() or None
-    processor, model = get_model(hf_token=token)
-
-    progress(0.2, desc="Loading audio...")
+    if language not in SUPPORTED_LANGUAGES:
+        raise gr.Error("Please select a supported language.")
+    progress(0, desc="Loading audio...")
     try:
         audio = load_audio(audio_file, sampling_rate=16000)
     except Exception as e:
-        return f"Error loading audio: {str(e)}", ""
+        raise gr.Error(f"Error loading audio: {e}") from e
+    if len(audio) == 0:
+        raise gr.Error("The audio file is empty.")
+
+    progress(0.2, desc="Loading model...")
+    token = (hf_token or "").strip() or None
+    try:
+        processor, model = get_model(hf_token=token)
+    except Exception as e:
+        raise gr.Error(f"Model loading failed: {e}") from e
 
     lang_code = SUPPORTED_LANGUAGES.get(language, "en")
     duration_s = len(audio) / 16000
@@ -136,10 +116,10 @@ def transcribe_long_audio(
     inputs.to(model.device, dtype=model.dtype)
 
     progress(0.6, desc="Generating transcription...")
-    start_time = time.time()
+    start_time = time.perf_counter()
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=256)
-    elapsed = time.time() - start_time
+    elapsed = time.perf_counter() - start_time
 
     text = processor.decode(
         outputs,
@@ -179,6 +159,8 @@ def create_demo():
             fn=download_model,
             inputs=[hf_token],
             outputs=[download_status],
+            concurrency_id="model",
+            concurrency_limit=1,
         )
 
         with gr.Tabs():
@@ -214,6 +196,8 @@ def create_demo():
                     fn=transcribe_audio,
                     inputs=[audio_input, language, punctuation, hf_token],
                     outputs=[text_output, stats_output],
+                    concurrency_id="model",
+                    concurrency_limit=1,
                 )
 
             with gr.Tab("Long-form"):
@@ -251,6 +235,8 @@ def create_demo():
                         hf_token,
                     ],
                     outputs=[text_output_long, stats_output_long],
+                    concurrency_id="model",
+                    concurrency_limit=1,
                 )
 
         gr.Markdown(
@@ -268,6 +254,5 @@ if __name__ == "__main__":
     demo = create_demo()
     demo.launch(
         server_name="127.0.0.1",
-        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
         theme=gr.themes.Soft(),
     )
