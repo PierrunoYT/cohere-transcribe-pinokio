@@ -77,6 +77,29 @@ def transcribe_audio(
     return transcribe_long_audio(audio_file, language, punctuation, hf_token, progress)
 
 
+def generate_chunks(model, inputs, progress):
+    """Keep feature tensors on CPU and send only one chunk to the device at a time."""
+    sequences = []
+    chunk_count = inputs["input_features"].shape[0]
+    with torch.inference_mode():
+        for index in range(chunk_count):
+            progress(0.6 + 0.35 * index / chunk_count, desc=f"Transcribing chunk {index + 1}/{chunk_count}...")
+            chunk = {
+                name: value[index:index + 1].to(
+                    device=model.device,
+                    dtype=model.dtype if value.is_floating_point() else value.dtype,
+                )
+                for name, value in inputs.items()
+                if torch.is_tensor(value)
+            }
+            outputs = model.generate(**chunk, max_new_tokens=256)
+            sequences.append(outputs[0].cpu())
+            del chunk, outputs
+    return torch.nn.utils.rnn.pad_sequence(
+        sequences, batch_first=True, padding_value=model.config.pad_token_id or 0
+    )
+
+
 def transcribe_long_audio(
     audio_file, language, punctuation, hf_token, progress=gr.Progress()
 ):
@@ -113,12 +136,9 @@ def transcribe_long_audio(
         punctuation=punctuation,
     )
     audio_chunk_index = inputs.get("audio_chunk_index")
-    inputs.to(model.device, dtype=model.dtype)
-
     progress(0.6, desc="Generating transcription...")
     start_time = time.perf_counter()
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=256)
+    outputs = generate_chunks(model, inputs, progress)
     elapsed = time.perf_counter() - start_time
 
     text = processor.decode(
@@ -130,6 +150,7 @@ def transcribe_long_audio(
 
     rtfx = duration_s / elapsed if elapsed > 0 else 0
     stats = f"Audio duration: {duration_s / 60:.1f} min | Transcribed in {elapsed:.1f}s | RTFx: {rtfx:.1f}x"
+    progress(1, desc="Done")
     return text, stats
 
 

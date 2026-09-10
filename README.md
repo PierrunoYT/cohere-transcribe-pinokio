@@ -6,7 +6,7 @@ A Gradio-based web interface for [Cohere Transcribe](https://huggingface.co/Cohe
 
 - **14 Languages**: English, French, German, Italian, Spanish, Portuguese, Greek, Dutch, Polish, Arabic, Vietnamese, Chinese (Mandarin), Japanese, Korean
 - **Short-form Transcription**: Quick transcription for audio clips under 30 seconds
-- **Long-form Transcription**: Automatic chunking and reassembly for longer audio files
+- **Long-form Transcription**: Automatic chunking and reassembly, with one chunk at a time on the GPU
 - **Punctuation Control**: Toggle punctuation on/off
 - **Model Caching**: Model loads once and stays in memory for fast subsequent transcriptions
 

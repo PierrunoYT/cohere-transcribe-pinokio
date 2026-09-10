@@ -68,6 +68,7 @@ class AppTests(unittest.TestCase):
         processor.decode.return_value = ["complete transcript"]
         model = SimpleNamespace(device="cpu", dtype="float32", generate=MagicMock())
         self.app.get_model = MagicMock(return_value=(processor, model))
+        self.app.generate_chunks = MagicMock()
         self.app.load_audio.return_value = [0] * 16000
         for callback in (self.app.transcribe_audio, self.app.transcribe_long_audio):
             text, stats = callback("audio.wav", "Japanese", False, " token ")
