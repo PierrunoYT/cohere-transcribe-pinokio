@@ -12,6 +12,7 @@ class AppTests(unittest.TestCase):
     def setUp(self):
         self.torch = MagicMock()
         self.torch.cuda.is_available.return_value = False
+        self.torch.cuda.OutOfMemoryError = MemoryError
         self.transformers = MagicMock()
         self.gradio = MagicMock()
         self.gradio.Error = ValueError
@@ -64,6 +65,17 @@ class AppTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "too short"):
             self.app.transcribe_audio("audio.wav", "English", True, None)
         self.app.get_model.assert_not_called()
+
+    def test_generation_failures_are_reported_to_the_user(self):
+        self.app.get_model = MagicMock(return_value=(MagicMock(), MagicMock()))
+        self.app.load_audio.return_value = [0] * 16000
+        self.app.generate_chunks = MagicMock(side_effect=MemoryError())
+        with self.assertRaisesRegex(ValueError, "GPU out of memory"):
+            self.app.transcribe_audio("audio.wav", "English", True, None)
+        self.torch.cuda.empty_cache.assert_called_once()
+        self.app.generate_chunks.side_effect = RuntimeError("bad input")
+        with self.assertRaisesRegex(ValueError, "Transcription failed: bad input"):
+            self.app.transcribe_audio("audio.wav", "English", True, None)
 
     def test_both_tabs_return_reassembled_string(self):
         processor = MagicMock()

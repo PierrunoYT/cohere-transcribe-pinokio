@@ -138,26 +138,35 @@ def transcribe_long_audio(
     lang_code = SUPPORTED_LANGUAGES.get(language, "en")
     duration_s = len(audio) / SAMPLE_RATE
 
-    progress(0.4, desc="Processing audio...")
-    inputs = processor(
-        audio=audio,
-        sampling_rate=SAMPLE_RATE,
-        return_tensors="pt",
-        language=lang_code,
-        punctuation=punctuation,
-    )
-    audio_chunk_index = inputs.get("audio_chunk_index")
-    progress(0.6, desc="Generating transcription...")
-    start_time = time.perf_counter()
-    outputs = generate_chunks(model, inputs, progress)
-    elapsed = time.perf_counter() - start_time
+    # Gradio hides the message of anything but gr.Error, so surface failures explicitly.
+    try:
+        progress(0.4, desc="Processing audio...")
+        inputs = processor(
+            audio=audio,
+            sampling_rate=SAMPLE_RATE,
+            return_tensors="pt",
+            language=lang_code,
+            punctuation=punctuation,
+        )
+        audio_chunk_index = inputs.get("audio_chunk_index")
+        progress(0.6, desc="Generating transcription...")
+        start_time = time.perf_counter()
+        outputs = generate_chunks(model, inputs, progress)
+        elapsed = time.perf_counter() - start_time
 
-    text = processor.decode(
-        outputs,
-        skip_special_tokens=True,
-        audio_chunk_index=audio_chunk_index,
-        language=lang_code,
-    )[0]
+        text = processor.decode(
+            outputs,
+            skip_special_tokens=True,
+            audio_chunk_index=audio_chunk_index,
+            language=lang_code,
+        )[0]
+    except torch.cuda.OutOfMemoryError as e:
+        torch.cuda.empty_cache()
+        raise gr.Error(
+            "GPU out of memory. Close other GPU applications, or set COHERE_DEVICE=cpu to use the CPU."
+        ) from e
+    except Exception as e:
+        raise gr.Error(f"Transcription failed: {e}") from e
 
     rtfx = duration_s / elapsed if elapsed > 0 else 0
     stats = f"Audio duration: {duration_s / 60:.1f} min | Transcribed in {elapsed:.1f}s | RTFx: {rtfx:.1f}x"
