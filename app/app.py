@@ -1,6 +1,9 @@
 import gradio as gr
+import numpy as np
 import torch
 import os
+import shutil
+import subprocess
 import time
 from threading import Lock
 
@@ -59,6 +62,24 @@ def get_model(device="auto", hf_token=None):
         _model_cache[device] = (processor, model)
         print("Model loaded successfully!")
         return processor, model
+
+
+def read_audio(path):
+    """Decode to 16 kHz mono float32, using ffmpeg for formats librosa cannot read (m4a, webm, ...)."""
+    try:
+        return load_audio(path, sampling_rate=SAMPLE_RATE)
+    except Exception as error:
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            raise
+        result = subprocess.run(
+            [ffmpeg, "-nostdin", "-v", "error", "-i", path,
+             "-f", "f32le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"],
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            raise error
+        return np.frombuffer(result.stdout, dtype=np.float32).copy()
 
 
 def download_model(hf_token, progress=gr.Progress()):
@@ -120,7 +141,7 @@ def transcribe_long_audio(
         raise gr.Error("Please select a supported language.")
     progress(0, desc="Loading audio...")
     try:
-        audio = load_audio(audio_file, sampling_rate=SAMPLE_RATE)
+        audio = read_audio(audio_file)
     except Exception as e:
         raise gr.Error(f"Error loading audio: {e}") from e
     if len(audio) == 0:

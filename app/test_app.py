@@ -17,6 +17,7 @@ class AppTests(unittest.TestCase):
         self.gradio = MagicMock()
         self.gradio.Error = ValueError
         modules = {
+            "numpy": MagicMock(),
             "torch": self.torch,
             "gradio": self.gradio,
             "transformers": self.transformers,

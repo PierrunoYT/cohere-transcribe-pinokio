@@ -1,6 +1,10 @@
 """Tests using installed libraries, but no model weights or network access."""
 import importlib.util
+import shutil
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 
@@ -62,6 +66,22 @@ class IntegrationTests(unittest.TestCase):
         features = CohereAsrFeatureExtractor()(audio, sampling_rate=SAMPLE_RATE, return_tensors="pt")
         self.assertGreaterEqual(int(features["attention_mask"].sum()), MIN_CHUNK_FRAMES)
         self.assertFalse(features["input_features"].isnan().any())
+
+    @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg is required to encode the fixture")
+    def test_formats_librosa_cannot_decode_fall_back_to_ffmpeg(self):
+        from app import SAMPLE_RATE, read_audio
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / "tone.m4a")
+            subprocess.run(
+                ["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=1:sample_rate=44100",
+                 "-ac", "2", path],
+                check=True,
+            )
+            audio = read_audio(path)
+        self.assertEqual(audio.ndim, 1)
+        self.assertAlmostEqual(len(audio) / SAMPLE_RATE, 1.0, delta=0.1)
+        self.assertGreater(abs(audio).max(), 0.1)
 
     def test_ui_serializes_all_model_callbacks(self):
         from app import create_demo
