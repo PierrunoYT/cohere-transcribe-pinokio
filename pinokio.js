@@ -25,7 +25,8 @@ module.exports = {
         text: "Installing",
         href: "install.js",
       }]
-    } else if (installed) {
+    } else if (installed || running.start) {
+      // A running server stays reachable even when the install marker is missing.
       if (running.start) {
         let local = info.local("start.js")
         if (local && local.url) {

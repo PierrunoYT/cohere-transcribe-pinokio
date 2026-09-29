@@ -29,6 +29,11 @@ test('server capture opens the actual local URL', async () => {
   assert.equal((await launcher.menu(null, info(true, ['start.js'], match[1])))[0].href, match[1])
 })
 
+test('a running server stays reachable without the install marker', async () => {
+  const menu = await launcher.menu(null, info(false, ['start.js'], 'http://127.0.0.1:7860'))
+  assert.deepEqual(menu.map(item => item.href), ['http://127.0.0.1:7860', 'start.js'])
+})
+
 test('each platform selects exactly one torch installation', () => {
   const script = require('../torch.js')
   for (const [platform, arch, gpu, expected] of [
