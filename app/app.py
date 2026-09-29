@@ -9,6 +9,10 @@ from transformers.audio_utils import load_audio
 
 # Model configuration
 MODEL_ID = "CohereLabs/cohere-transcribe-03-2026"
+SAMPLE_RATE = 16000
+# Shorter inputs yield too few feature frames for normalization and decode to noise.
+MIN_AUDIO_SECONDS = 0.1
+MIN_CHUNK_FRAMES = 3
 
 SUPPORTED_LANGUAGES = {
     "English": "en",
@@ -81,9 +85,14 @@ def generate_chunks(model, inputs, progress):
     """Keep feature tensors on CPU and send only one chunk to the device at a time."""
     sequences = []
     chunk_count = inputs["input_features"].shape[0]
+    mask = inputs.get("attention_mask")
     with torch.inference_mode():
         for index in range(chunk_count):
             progress(0.6 + 0.35 * index / chunk_count, desc=f"Transcribing chunk {index + 1}/{chunk_count}...")
+            # A sliver left over by chunk splitting has NaN features; decode it as empty text.
+            if mask is not None and int(mask[index].sum()) < MIN_CHUNK_FRAMES:
+                sequences.append(torch.empty(0, dtype=torch.long))
+                continue
             chunk = {
                 name: value[index:index + 1].to(
                     device=model.device,
@@ -111,11 +120,13 @@ def transcribe_long_audio(
         raise gr.Error("Please select a supported language.")
     progress(0, desc="Loading audio...")
     try:
-        audio = load_audio(audio_file, sampling_rate=16000)
+        audio = load_audio(audio_file, sampling_rate=SAMPLE_RATE)
     except Exception as e:
         raise gr.Error(f"Error loading audio: {e}") from e
     if len(audio) == 0:
         raise gr.Error("The audio file is empty.")
+    if len(audio) < MIN_AUDIO_SECONDS * SAMPLE_RATE:
+        raise gr.Error(f"The audio is too short; provide at least {MIN_AUDIO_SECONDS} seconds.")
 
     progress(0.2, desc="Loading model...")
     token = (hf_token or "").strip() or None
@@ -125,12 +136,12 @@ def transcribe_long_audio(
         raise gr.Error(f"Model loading failed: {e}") from e
 
     lang_code = SUPPORTED_LANGUAGES.get(language, "en")
-    duration_s = len(audio) / 16000
+    duration_s = len(audio) / SAMPLE_RATE
 
     progress(0.4, desc="Processing audio...")
     inputs = processor(
         audio=audio,
-        sampling_rate=16000,
+        sampling_rate=SAMPLE_RATE,
         return_tensors="pt",
         language=lang_code,
         punctuation=punctuation,

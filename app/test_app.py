@@ -60,6 +60,9 @@ class AppTests(unittest.TestCase):
         self.app.load_audio.return_value = []
         with self.assertRaisesRegex(ValueError, "empty"):
             self.app.transcribe_audio("audio.wav", "English", True, None)
+        self.app.load_audio.return_value = [0] * 200
+        with self.assertRaisesRegex(ValueError, "too short"):
+            self.app.transcribe_audio("audio.wav", "English", True, None)
         self.app.get_model.assert_not_called()
 
     def test_both_tabs_return_reassembled_string(self):
