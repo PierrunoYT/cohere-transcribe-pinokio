@@ -78,13 +78,14 @@ def read_audio(path):
             capture_output=True,
         )
         if result.returncode != 0:
-            raise error
+            detail = result.stderr.decode(errors="replace").strip() or f"exit code {result.returncode}"
+            raise RuntimeError(f"{error}; ffmpeg also failed: {detail}") from error
         return np.frombuffer(result.stdout, dtype=np.float32).copy()
 
 
 def download_model(hf_token, progress=gr.Progress()):
     """Pre-download and cache the model so first transcription is faster."""
-    progress(0, desc="Validating token...")
+    progress(0, desc="Starting download...")
     token = (hf_token or "").strip() or None
     try:
         progress(0.2, desc="Downloading model files...")
